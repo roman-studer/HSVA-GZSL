@@ -1,0 +1,9 @@
+data
+configuration
+data
+checkpoints
+wandb
+.idea
+*.pyc
+
+*.tar
