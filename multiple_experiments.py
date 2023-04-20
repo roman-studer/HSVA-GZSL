@@ -2,7 +2,7 @@ import uuid
 
 ### execute this function to train and test the vae-model
 
-from HSVA_original import Model
+from HSVA import Model
 import numpy as np
 import pickle
 import torch

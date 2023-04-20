@@ -671,9 +671,8 @@ class Model(nn.Module):
         best_seen = 0
         best_epoch = 0
         best_gzsl_epoch = 0
-        for epoch in range(0, self.nepoch):
+        for epoch in range(0, self.gen_warmup):
             self.current_epoch = epoch
-
             i = -1
             for iters in range(0, self.dataset.ntrain, self.batch_size):
                 i += 1
@@ -701,30 +700,33 @@ class Model(nn.Module):
                         distance)[7:13])
                     logger.log_metrics({'loss_gen': loss_gen, 'distance': distance})
 
-            # turn into evaluation mode:
-            for key, value in self.encoder.items():
-                self.encoder[key].eval()
-            for key, value in self.decoder.items():
-                self.decoder[key].eval()
+        # turn into evaluation mode:
+        for key, value in self.encoder.items():
+            self.encoder[key].eval()
+        for key, value in self.decoder.items():
+            self.decoder[key].eval()
 
-            if epoch >= self.gen_warmup:
-                if self.generalized:
-                    unseen, seen, H = self.train_classifier(current_epoch=epoch, logger=logger)
-                    if best_H < H:  # and best_unseen< unseen:
-                        best_gzsl_epoch = epoch
-                        best_unseen, best_seen, best_H = unseen, seen, H
-                        # torch.save({'encoder_v': self.encoder['resnet_features'].state_dict()}, os.path.join(self.result_root, self.DATASET, 'checkpoint_encv.pth.tar'))
-                        # torch.save({'encoder_a': self.encoder[self.auxiliary_data_source].state_dict()}, os.path.join(self.result_root, self.DATASET, 'checkpoint_enca.pth.tar'))
-                        # torch.save({'encoder_z': self.encoder_z.state_dict()}, os.path.join(self.result_root, self.DATASET, 'checkpoint_encz.pth.tar'))
-                    print('[best_epoch=%.1f] best_unseen=%.3f, best_seen=%.3f, best_h=%.3f' % (
-                        best_gzsl_epoch, best_unseen, best_seen, best_H))
-                    logger.log_metrics({'best_unseen': best_unseen, 'best_seen': best_seen, 'best_H': best_H})
+        for epoch in range(0, self.nepoch):
+            self.current_epoch += 1
 
+            if self.generalized:
+                unseen, seen, H = self.train_classifier(current_epoch=epoch, logger=logger)
+                if best_H < H:  # and best_unseen< unseen:
+                    best_gzsl_epoch = epoch
+                    best_unseen, best_seen, best_H = unseen, seen, H
+                    # torch.save({'encoder_v': self.encoder['resnet_features'].state_dict()}, os.path.join(
+                    # self.result_root, self.DATASET, 'checkpoint_encv.pth.tar')) torch.save({'encoder_a':
+                    # self.encoder[self.auxiliary_data_source].state_dict()}, os.path.join(self.result_root,
+                    # self.DATASET, 'checkpoint_enca.pth.tar')) torch.save({'encoder_z': self.encoder_z.state_dict(
+                    # )}, os.path.join(self.result_root, self.DATASET, 'checkpoint_encz.pth.tar'))
+                print('[best_epoch=%.1f] best_unseen=%.3f, best_seen=%.3f, best_h=%.3f' % (
+                    best_gzsl_epoch, best_unseen, best_seen, best_H))
+                logger.log_metrics({'best_unseen': best_unseen, 'best_seen': best_seen, 'best_H': best_H})
 
-                else:
-                    # return 0, torch.tensor(cls.acc).item(), 0, history
-                    acc = self.train_classifier(current_epoch=epoch)
-                    if best_acc < acc:
-                        best_epoch = epoch
-                        best_acc = acc
-                    print('[best_epoch=%.1f] best_acc=%.3f' % (best_epoch, best_acc))
+            else:
+                # return 0, torch.tensor(cls.acc).item(), 0, history
+                acc = self.train_classifier(current_epoch=epoch)
+                if best_acc < acc:
+                    best_epoch = epoch
+                    best_acc = acc
+                print('[best_epoch=%.1f] best_acc=%.3f' % (best_epoch, best_acc))
