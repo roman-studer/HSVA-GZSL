@@ -88,7 +88,14 @@ class DATA_LOADER(object):
         batch_feature = self.data['train_seen']['resnet_features'][idx]
         batch_label = self.data['train_seen']['labels'][idx]
         batch_att = self.aux_data[batch_label]
-        return batch_label, [batch_feature, batch_att]
+        return [batch_feature, batch_att, batch_label]
+
+    def next_unseen_batch(self, batch_size):
+        idx_unseen = torch.randperm(self.ntest_unseen)[0:batch_size]
+        # batch_unseen_feature = self.data['test_unseen']['resnet_features'][idx_unseen]
+        batch_unseen_label =  self.data['test_unseen']['labels'][idx_unseen]
+        batch_unseen_att = self.aux_data[batch_unseen_label]
+        return [batch_unseen_att, batch_unseen_label]
 
     def read_pollendata(self):
         matcontent = self.get_pollen_data()
@@ -121,12 +128,14 @@ class DATA_LOADER(object):
         train_label = torch.from_numpy(label[trainval_loc]).long().to(self.device)
         test_unseen_label = torch.from_numpy(label[test_unseen_loc]).long().to(self.device)
         test_seen_label = torch.from_numpy(label[test_seen_loc]).long().to(self.device)
+        self.ntest_unseen = test_unseen_feature.size()[0]
+        self.ntest_seen = test_seen_feature.size()[0]
 
         self.seenclasses = torch.from_numpy(np.unique(train_label.cpu().numpy())).to(self.device)
-        self.novelclasses = torch.from_numpy(np.unique(test_unseen_label.cpu().numpy())).to(self.device)
+        self.unseenclasses = torch.from_numpy(np.unique(test_unseen_label.cpu().numpy())).to(self.device)
         self.ntrain = train_feature.size()[0]
         self.ntrain_class = self.seenclasses.size(0)
-        self.ntest_class = self.novelclasses.size(0)
+        self.ntest_class = self.unseenclasses.size(0)
         self.train_class = self.seenclasses.clone()
         self.allclasses = torch.arange(0, self.ntrain_class+self.ntest_class).long()
         self.attri_name = matcontent['attri_name']
@@ -152,7 +161,7 @@ class DATA_LOADER(object):
         self.data['test_unseen'][self.auxiliary_data_source] = self.aux_data[test_unseen_label]
         self.data['test_unseen']['labels'] = test_unseen_label
 
-        self.novelclass_aux_data = self.aux_data[self.novelclasses]
+        self.unseenclass_aux_data = self.aux_data[self.unseenclasses]
         self.seenclass_aux_data = self.aux_data[self.seenclasses]
 
     def read_matdataset(self):
@@ -380,4 +389,3 @@ class DATA_LOADER(object):
             self.data['train_seen_unseen_mixed']['glove'] = torch.cat((self.data['train_seen']['glove'],self.data['train_unseen']['glove']),dim=0)
         if use_hie:
             self.data['train_seen_unseen_mixed']['wordnet'] = torch.cat((self.data['train_seen']['wordnet'],self.data['train_unseen']['wordnet']),dim=0)
-            
